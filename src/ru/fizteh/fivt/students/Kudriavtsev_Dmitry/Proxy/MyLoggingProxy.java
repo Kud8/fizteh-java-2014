@@ -95,7 +95,7 @@ public class MyLoggingProxy implements InvocationHandler {
                 jsonObj.put("returnValue", arr);
             } else {
                 if (res == null) {
-                    jsonObj.put("returnValue", JSONObject.NULL);
+                    jsonObj.put("returnValue", "void");
                 } else {
                     jsonObj.put("returnValue", res);
                 }
