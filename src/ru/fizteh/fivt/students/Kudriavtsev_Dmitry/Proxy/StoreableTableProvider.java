@@ -125,7 +125,12 @@ public class StoreableTableProvider implements TableProvider, AutoCloseable {
             throws IllegalArgumentException {
         checkClosed();
         checkTableName(name);
-        return tables.get(name);
+        lock.readLock().lock();
+        try {
+            return tables.get(name);
+        } finally {
+            lock.readLock().unlock();
+        }
     }
 
     @Override
@@ -137,7 +142,7 @@ public class StoreableTableProvider implements TableProvider, AutoCloseable {
             throw new IllegalArgumentException("Type can't be null");
         }
 
-        lock.readLock().lock();
+        lock.writeLock().lock();
         try {
             try {
                 new CurrentStoreable(columnTypes);
@@ -163,7 +168,7 @@ public class StoreableTableProvider implements TableProvider, AutoCloseable {
             tables.put(name, table);
             return table;
         } finally {
-            lock.readLock().unlock();
+            lock.writeLock().unlock();
         }
     }
 
@@ -174,7 +179,7 @@ public class StoreableTableProvider implements TableProvider, AutoCloseable {
         checkTableName(name);
         String directory = dbDirectory + File.separator + name;
         File tableDirectory = new File(directory);
-        lock.readLock().lock();
+        lock.writeLock().lock();
         try {
             if (!tableDirectory.exists() || !tables.containsKey(name)) {
                 throw new IllegalArgumentException("table doesn't exist");
@@ -182,7 +187,7 @@ public class StoreableTableProvider implements TableProvider, AutoCloseable {
             StoreableTable table = tables.remove(name);
             table.deleteFiles(name, true);
         } finally {
-            lock.readLock().unlock();
+            lock.writeLock().unlock();
         }
     }
 

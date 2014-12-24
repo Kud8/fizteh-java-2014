@@ -5,7 +5,6 @@ import ru.fizteh.fivt.students.Kudriavtsev_Dmitry.Proxy.Welcome;
 
 import java.io.PrintStream;
 import java.util.Map;
-import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 /**
  * Created by Дмитрий on 07.10.14.
@@ -38,18 +37,12 @@ public class Show extends StoreableCommand {
             return checkForArgs(err);
         }
 
-        ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
-        lock.readLock().lock();
-        try {
-            if (dbConnector.getTables().isEmpty() && dbConnector.getActiveTableProvider().getTables().isEmpty()) {
-                return true;
-            }
+        if (dbConnector.getTables().isEmpty() && dbConnector.getActiveTableProvider().getTables().isEmpty()) {
+            return true;
+        }
 
-            for (Map.Entry<String, StoreableTable> a : dbConnector.getActiveTableProvider().getTables().entrySet()) {
-                out.println(a.getKey() + " " + a.getValue().size());
-            }
-        } finally {
-            lock.readLock().unlock();
+        for (Map.Entry<String, StoreableTable> a : dbConnector.getActiveTableProvider().getTables().entrySet()) {
+            out.println(a.getKey() + " " + a.getValue().size());
         }
         return true;
     }

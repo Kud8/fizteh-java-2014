@@ -7,7 +7,6 @@ import ru.fizteh.fivt.students.Kudriavtsev_Dmitry.Proxy.Welcome;
 import java.io.File;
 import java.io.PrintStream;
 import java.text.ParseException;
-import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 /**
  * Created by Дмитрий on 04.10.14.
@@ -41,37 +40,31 @@ public class Put extends StoreableCommand {
             return true;
         }
         Storeable value;
-        ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
-        lock.readLock().lock();
         try {
-            try {
-                value = dbConnector.getActiveTable().put(args[0],
-                        dbConnector.getActiveTableProvider().deserialize(dbConnector.getActiveTable(), args[1]));
-            } catch (ParseException e) {
-                err.println("Parse Exception in deserialize");
-                return !batchModeInInteractive;
+            value = dbConnector.getActiveTable().put(args[0],
+                    dbConnector.getActiveTableProvider().deserialize(dbConnector.getActiveTable(), args[1]));
+        } catch (ParseException e) {
+            err.println("Parse Exception in deserialize");
+            return !batchModeInInteractive;
+        }
+        if (value != null) {
+            out.println("overwrite");
+            for (Object val : ((CurrentStoreable) value).getValues()) {
+                out.println(val.toString());
             }
-            if (value != null) {
-                out.println("overwrite");
-                for (Object val : ((CurrentStoreable) value).getValues()) {
-                    out.println(val.toString());
-                }
-            } else {
-                out.println("new");
+        } else {
+            out.println("new");
+        }
+        String newPath = dbConnector.getActiveTable().whereToSave("", args[0]).path;
+        if (new File(newPath).exists() || dbConnector.getActiveTable().getChangedFiles().containsKey(newPath)) {
+            Integer collisionCount = dbConnector.getActiveTable().getChangedFiles().get(newPath);
+            if (collisionCount == null) {
+                collisionCount = dbConnector.getActiveTable().countOfCollisionsInFile(new File(newPath).toPath());
             }
-            String newPath = dbConnector.getActiveTable().whereToSave("", args[0]).getKey();
-            if (new File(newPath).exists() || dbConnector.getActiveTable().getChangedFiles().containsKey(newPath)) {
-                Integer collisionCount = dbConnector.getActiveTable().getChangedFiles().get(newPath);
-                if (collisionCount == null) {
-                    collisionCount = dbConnector.getActiveTable().countOfCollisionsInFile(new File(newPath).toPath());
-                }
-                ++collisionCount;
-                dbConnector.getActiveTable().getChangedFiles().put(newPath, collisionCount);
-            } else {
-                dbConnector.getActiveTable().getChangedFiles().put(newPath, 0);
-            }
-        } finally {
-            lock.readLock().unlock();
+            ++collisionCount;
+            dbConnector.getActiveTable().getChangedFiles().put(newPath, collisionCount);
+        } else {
+            dbConnector.getActiveTable().getChangedFiles().put(newPath, 0);
         }
         return true;
     }

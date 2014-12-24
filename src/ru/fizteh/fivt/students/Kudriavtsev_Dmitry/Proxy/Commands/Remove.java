@@ -3,7 +3,6 @@ package ru.fizteh.fivt.students.Kudriavtsev_Dmitry.Proxy.Commands;
 import ru.fizteh.fivt.students.Kudriavtsev_Dmitry.Proxy.Welcome;
 
 import java.io.PrintStream;
-import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 /**
  * Created by Дмитрий on 04.10.14.
@@ -26,21 +25,15 @@ public class Remove extends StoreableCommand {
             noTable(err);
             return true;
         }
-        ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
-        lock.readLock().lock();
-        try {
-            if (dbConnector.getActiveTable().remove(args[0]) != null) {
-                out.println("removed");
-                dbConnector.getActiveTable().getChangedFiles().put(
-                        dbConnector.getActiveTable().whereToSave("", args[0]).getKey(), 0);
-            } else {
-                err.println("not found");
-                if (batchModeInInteractive) {
-                    return false;
-                }
+        if (dbConnector.getActiveTable().remove(args[0]) != null) {
+            out.println("removed");
+            dbConnector.getActiveTable().getChangedFiles().put(
+                    dbConnector.getActiveTable().whereToSave("", args[0]).path, 0);
+        } else {
+            err.println("not found");
+            if (batchModeInInteractive) {
+                return false;
             }
-        } finally {
-            lock.readLock().unlock();
         }
         return true;
     }

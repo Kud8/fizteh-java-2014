@@ -100,7 +100,12 @@ public class StoreableTable implements Table, AutoCloseable {
         signature = newSignature;
         provider = newProvider;
         types = provider.getRevClassNames();
-        readDb();
+        lock.readLock().lock();
+        try {
+            readDb();
+        } finally {
+            lock.readLock().unlock();
+        }
     }
 
     public void readDb() {
@@ -219,7 +224,7 @@ public class StoreableTable implements Table, AutoCloseable {
         checkArg("key", key);
         checkArg("value", value);
         checkSignature(value);
-        lock.readLock().lock();
+        lock.writeLock().lock();
         try {
             if (activeTable.get().containsKey(key) 
                 && ((CurrentStoreable) activeTable.get().get(key)).getValues().equals(
@@ -232,7 +237,7 @@ public class StoreableTable implements Table, AutoCloseable {
             removed.get().remove(key);
             return newKey.get().put(key, value);
         } finally {
-            lock.readLock().unlock();
+            lock.writeLock().unlock();
         }
     }
 
@@ -249,7 +254,7 @@ public class StoreableTable implements Table, AutoCloseable {
         if (key == null) {
             throw new IllegalArgumentException();
         }
-        lock.readLock().lock();
+        lock.writeLock().lock();
         try {
             if (!activeTable.get().containsKey(key) && !newKey.get().containsKey(key)) {
                 return null;
@@ -263,7 +268,7 @@ public class StoreableTable implements Table, AutoCloseable {
                 return value;
             }
         } finally {
-            lock.readLock().unlock();
+            lock.writeLock().unlock();
         }
     }
 
@@ -292,7 +297,7 @@ public class StoreableTable implements Table, AutoCloseable {
     @Override
     public int commit() {
         checkClosed();
-        lock.readLock().lock();
+        lock.writeLock().lock();
         try {
             removed.get().keySet().forEach(activeTable.get()::remove);
             for (Map.Entry<String, Storeable> entry : newKey.get().entrySet()) {
@@ -301,7 +306,7 @@ public class StoreableTable implements Table, AutoCloseable {
             unload(this, getName());
             return remindChanges(true);
         } finally {
-            lock.readLock().unlock();
+            lock.writeLock().unlock();
         }
     }
 
@@ -354,14 +359,11 @@ public class StoreableTable implements Table, AutoCloseable {
         return dbPath.resolve(nameOfTable + File.separator + directory + FORMATOFDIRECTORY + File.separator);
     }
 
-    public AbstractMap.SimpleEntry<String, AbstractMap.SimpleEntry<Integer, Integer>>
-                                            whereToSave(final String nameOfTable, final String value) {
+    public Triple<String, Integer, Integer> whereToSave(final String nameOfTable, final String value) {
         int hashCode = value.hashCode();
-        int d = hashCode % DIRECTORIES_COUNT;
-        int f = hashCode / DIRECTORIES_COUNT % FILES_COUNT;
-        return new AbstractMap.SimpleEntry<>(
-                nameOfPath(nameOfTable, d, f).toString(),
-                new AbstractMap.SimpleEntry<>(d, f));
+        int directory = hashCode % DIRECTORIES_COUNT;
+        int file = hashCode / DIRECTORIES_COUNT % FILES_COUNT;
+        return new Triple<>(nameOfPath(nameOfTable, directory, file).toString(), directory, file);
     }
 
     public void deleteFiles(final String nameOfTable, final boolean all)
@@ -400,11 +402,10 @@ public class StoreableTable implements Table, AutoCloseable {
                 Files.createDirectory(dbPath);
             }
             for (Map.Entry<String, Storeable> entry :  currentTable.activeTable.get().entrySet()) {
-                AbstractMap.SimpleEntry<String, AbstractMap.SimpleEntry<Integer, Integer>> pathOfFile =
-                        whereToSave("", entry.getKey());
-                if (changedFiles.get().containsKey(pathOfFile.getKey())) {
-                    int d = pathOfFile.getValue().getKey();
-                    int f = pathOfFile.getValue().getValue();
+                Triple<String, Integer, Integer> pathOfFile = whereToSave("", entry.getKey());
+                if (changedFiles.get().containsKey(pathOfFile.path)) {
+                    int d = pathOfFile.directory;
+                    int f = pathOfFile.file;
                     if (streams[d][f] == null) {
                         if (!dir[d]) {
                             if (!Files.exists(nameOfPath("", d))) {
@@ -416,12 +417,12 @@ public class StoreableTable implements Table, AutoCloseable {
                                 nameOfPath("", d, f)));
                     }
                     writeToFile(streams[d][f], entry.getKey(), entry.getValue());
-                    Integer collisionCount = changedFiles.get().get(pathOfFile.getKey());
+                    Integer collisionCount = changedFiles.get().get(pathOfFile.path);
                     if (collisionCount > 0) {
                         --collisionCount;
-                        changedFiles.get().put(pathOfFile.getKey(), collisionCount);
+                        changedFiles.get().put(pathOfFile.path, collisionCount);
                     } else {
-                        changedFiles.get().remove(pathOfFile.getKey());
+                        changedFiles.get().remove(pathOfFile.path);
                     }
                 }
             }
