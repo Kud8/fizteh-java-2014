@@ -3,6 +3,7 @@ package ru.fizteh.fivt.students.Kudriavtsev_Dmitry.Proxy.Commands;
 import ru.fizteh.fivt.students.Kudriavtsev_Dmitry.Proxy.Welcome;
 
 import java.io.PrintStream;
+import java.util.StringJoiner;
 
 /**
  * Created by Дмитрий on 04.10.14.
@@ -26,15 +27,11 @@ public class List extends StoreableCommand {
             return true;
         }
         java.util.List<String> keySet = dbConnector.getActiveTable().list();
-        int count = 0;
+        StringJoiner strJoin = new StringJoiner(" ,");
         for (String key : keySet) {
-            out.print(key);
-            if (count != keySet.size() - 1) {
-                out.print(", ");
-                ++count;
-            }
+            strJoin.add(key);
         }
-        out.println();
+        out.println(strJoin.toString());
         return true;
     }
 }

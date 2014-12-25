@@ -143,27 +143,10 @@ public class Interpreter {
         Command command = mainClass.commands.get(name);
         command.batchMode = batchMode;
         command.batchModeInInteractive = batchModeInInteractive;
-        boolean isReadLock;
-        if (command != null) {
-            if (command.name.equals("commit") || command.name.equals("put") || command.name.equals("remove")) {
-                lock.writeLock().lock();
-                isReadLock = false;
-            } else {
-                lock.readLock().lock();
-                isReadLock = true;
-            }
-            try {
-                if (!command.exec(mainClass, args, out, err)) {
-                    return false;
-                }
-            } finally {
-                if (isReadLock) {
-                    lock.readLock().unlock();
-                } else {
-                    lock.writeLock().unlock();
-                }
-            }
-        } else if (!args[0].equals("")) {
+        if (!command.exec(mainClass, args, out, err)) {
+            return false;
+        }
+        else if (!args[0].equals("")) {
             err.println(args[0] + " : command not found");
             return false;
         }

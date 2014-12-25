@@ -224,7 +224,7 @@ public class StoreableTable implements Table, AutoCloseable {
         checkArg("key", key);
         checkArg("value", value);
         checkSignature(value);
-        lock.writeLock().lock();
+        lock.readLock().lock();
         try {
             if (activeTable.get().containsKey(key) 
                 && ((CurrentStoreable) activeTable.get().get(key)).getValues().equals(
@@ -237,7 +237,7 @@ public class StoreableTable implements Table, AutoCloseable {
             removed.get().remove(key);
             return newKey.get().put(key, value);
         } finally {
-            lock.writeLock().unlock();
+            lock.readLock().unlock();
         }
     }
 
@@ -254,7 +254,7 @@ public class StoreableTable implements Table, AutoCloseable {
         if (key == null) {
             throw new IllegalArgumentException();
         }
-        lock.writeLock().lock();
+        lock.readLock().lock();
         try {
             if (!activeTable.get().containsKey(key) && !newKey.get().containsKey(key)) {
                 return null;
@@ -268,7 +268,7 @@ public class StoreableTable implements Table, AutoCloseable {
                 return value;
             }
         } finally {
-            lock.writeLock().unlock();
+            lock.readLock().unlock();
         }
     }
 
